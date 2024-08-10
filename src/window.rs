@@ -23,8 +23,12 @@ use std::{
     time::SystemTime,
 };
 
-use crate::{geo::GeoManager, listui::ListAnchor, types::TextureSheetDefinition};
-use crate::{listui::ListInterface, types::ListItemData};
+use crate::listui::ListInterface;
+use crate::{
+    geo::GeoManager,
+    listui::ListAnchor,
+    types::{TextureSheetDefinition, ValueStore},
+};
 use crate::{
     text::TextCollection,
     types::{ComponentTransform, PixelRect},
@@ -101,7 +105,7 @@ impl State<'_> {
 
     pub fn layout_listui(
         &mut self,
-        store: &[Box<dyn ListItemData>],
+        store: &ValueStore,
         listui_index: usize,
     ) -> Result<(), Box<dyn Error>> {
         // here i'll make the geometry instance group
@@ -172,7 +176,7 @@ impl State<'_> {
                 },
             );
 
-            let value = &store[item.value.index];
+            let value = &store.vec[item.value.index];
 
             context.texts.new_text(
                 (
@@ -234,13 +238,9 @@ impl State<'_> {
             .await
             .expect("wgpu request_adapter failed");
 
-        // this used to prevent resizing the window larger from crashing; no longer needed?
-        // let needed_limits = Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
-
         let (device, queue) = adapter
             .request_device(
                 &DeviceDescriptor {
-                    // required_limits: needed_limits,
                     ..Default::default()
                 },
                 None,
@@ -403,7 +403,7 @@ impl Context<'_> {
 pub fn process_events(
     state: Rc<RefCell<State>>,
     sdl: Rc<RefCell<Sdl>>,
-    store: Rc<RefCell<Vec<Box<dyn ListItemData>>>>,
+    store: Rc<RefCell<ValueStore>>,
 ) -> impl FnMut() + '_ {
     let mut events = sdl.borrow_mut().event_pump().unwrap();
 
@@ -467,10 +467,6 @@ pub fn process_events(
         state.listuis[0].entries[2]
             .value
             .replace(Box::new(k3 + 0.01), &mut store);
-
-        // {
-        //     state.layout_listui(0).unwrap();
-        // }
 
         let context = state.context.as_mut().unwrap();
         {

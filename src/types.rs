@@ -20,6 +20,20 @@ use wgpu::{
 
 use crate::listui::{ListInterface, OperatorResult};
 
+pub struct ValueStore {
+    pub vec: Vec<Box<dyn ListItemData>>,
+}
+
+impl ValueStore {
+    pub fn new() -> Self {
+        Self { vec: vec![] }
+    }
+
+    pub fn insert<T: 'static + ListItemData>(&mut self, v: T) -> Value<dyn ListItemData> {
+        Value::<dyn ListItemData>::new(Box::new(v), self)
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Value<T>
 where
@@ -72,16 +86,16 @@ impl<T: ?Sized + 'static> Value<T>
 where
     T: 'static + ListItemData,
 {
-    pub fn load<'a>(&self, store: &'a mut [Box<dyn ListItemData>]) -> &'a dyn ListItemData {
-        store[self.index].deref_mut()
+    pub fn load<'a>(&self, store: &'a mut ValueStore) -> &'a dyn ListItemData {
+        store.vec[self.index].deref_mut()
     }
 
     pub fn new(
         boxed_value: Box<dyn ListItemData>,
-        store: &mut Vec<Box<dyn ListItemData>>,
+        store: &mut ValueStore,
     ) -> Value<dyn ListItemData> {
-        let index = store.len();
-        store.push(boxed_value);
+        let index = store.vec.len();
+        store.vec.push(boxed_value);
 
         Value {
             p: PhantomData,
@@ -89,12 +103,8 @@ where
         }
     }
 
-    pub fn replace(
-        &mut self,
-        boxed_value: Box<dyn ListItemData>,
-        store: &mut [Box<dyn ListItemData>],
-    ) {
-        store[self.index] = boxed_value;
+    pub fn replace(&mut self, boxed_value: Box<dyn ListItemData>, store: &mut ValueStore) {
+        store.vec[self.index] = boxed_value;
     }
 }
 

@@ -85,17 +85,31 @@ impl<'a> ListInterface<'a> {
         }
     }
 
-    pub fn add_entry<'b: 'a>(
+    pub fn add_labeled_value<'b: 'a>(
         &mut self,
-        ty: ListItemType,
         label: &str,
-        selectable: bool,
-        editable: bool,
         value: &'a mut Value<dyn ListItemData>,
     ) {
         self.entries.push(ListItem {
-            ty,
             label: label.to_string(),
+            ty: ListItemType::Text,
+            selectable: ListItemSelectable::Selectable,
+            editable: ListItemEditable::NotEditable,
+            value,
+        })
+    }
+
+    pub fn add_entry<'b: 'a>(
+        &mut self,
+        label: &str,
+        ty: ListItemType,
+        selectable: ListItemSelectable,
+        editable: ListItemEditable,
+        value: &'a mut Value<dyn ListItemData>,
+    ) {
+        self.entries.push(ListItem {
+            label: label.to_string(),
+            ty,
             selectable,
             editable,
             value,
@@ -145,6 +159,20 @@ pub enum ListItemType {
     SubList,
 }
 
+#[derive(Default)]
+pub enum ListItemSelectable {
+    #[default]
+    Selectable,
+    NotSelectable,
+}
+
+#[derive(Default)]
+pub enum ListItemEditable {
+    #[default]
+    Editable,
+    NotEditable,
+}
+
 pub enum OperatorResult {
     Done,
     Cancelled,
@@ -153,9 +181,9 @@ pub enum OperatorResult {
 
 // ListItems have these options. They also contain data references.
 pub struct ListItem<'a> {
-    pub ty: ListItemType,
     pub label: String,
-    pub selectable: bool,
-    pub editable: bool,
+    pub ty: ListItemType,
+    pub selectable: ListItemSelectable,
+    pub editable: ListItemEditable,
     pub value: &'a mut Value<dyn ListItemData>,
 }
