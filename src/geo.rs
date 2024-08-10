@@ -222,7 +222,7 @@ impl GeoManager {
                             module: &ig.render_pipeline_record.shader_module,
                             entry_point: "vs_main",
                             buffers: &UNIT_SQUARE_BUFFER_LAYOUT,
-                            // compilation_options: Default::default(),
+                            compilation_options: Default::default(),
                         },
                         fragment: Some(FragmentState {
                             module: &ig.render_pipeline_record.shader_module,
@@ -232,7 +232,7 @@ impl GeoManager {
                                 blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                                 write_mask: ColorWrites::ALL,
                             })],
-                            // compilation_options: Default::default(),
+                            compilation_options: Default::default(),
                         }),
                         primitive: PrimitiveState {
                             cull_mode: None,
@@ -241,6 +241,7 @@ impl GeoManager {
                         depth_stencil: None,
                         multisample: MultisampleState::default(),
                         multiview: None,
+                        cache: None,
                     });
             }
         }
@@ -383,7 +384,7 @@ impl GeoManager {
                     module: &shader_module,
                     entry_point: "vs_main",
                     buffers: &UNIT_SQUARE_BUFFER_LAYOUT,
-                    // compilation_options: Default::default(),
+                    compilation_options: Default::default(),
                 },
                 fragment: Some(FragmentState {
                     module: &shader_module,
@@ -393,7 +394,7 @@ impl GeoManager {
                         blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                         write_mask: ColorWrites::ALL,
                     })],
-                    // compilation_options: Default::default(),
+                    compilation_options: Default::default(),
                 }),
                 primitive: PrimitiveState {
                     cull_mode: Some(Face::Back),
@@ -402,6 +403,7 @@ impl GeoManager {
                 depth_stencil: None,
                 multisample: MultisampleState::default(),
                 multiview: None,
+                cache: None,
             }),
             pipeline_layout,
             shader_module,

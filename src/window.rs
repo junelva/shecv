@@ -1,5 +1,6 @@
 use glam::{IVec2, UVec2};
 
+use glyphon::Resolution;
 use sdl2::{
     event::{Event, WindowEvent},
     keyboard::Keycode,
@@ -388,7 +389,7 @@ impl Context<'_> {
             // include text labels in pass
             self.texts
                 .text_renderer
-                .render(&self.texts.atlas, &mut pass)?;
+                .render(&self.texts.atlas, &self.texts.viewport, &mut pass)?;
         }
 
         queue.submit(Some(encoder.finish()));
@@ -474,6 +475,14 @@ pub fn process_events(
         let context = state.context.as_mut().unwrap();
         {
             let config = context.config.lock().unwrap();
+            context.texts.viewport.update(
+                &context.queue.clone().lock().unwrap(),
+                Resolution {
+                    width: config.width,
+                    height: config.height,
+                },
+            );
+
             context
                 .texts
                 .prepare(

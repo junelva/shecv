@@ -1,8 +1,8 @@
 use std::{error::Error, sync::Arc};
 
 use glyphon::{
-    Attrs, Buffer, Family, FontSystem, Metrics, Resolution, Shaping, SwashCache, TextArea,
-    TextAtlas, TextBounds, TextRenderer,
+    Attrs, Buffer, Cache, Family, FontSystem, Metrics, Shaping, SwashCache, TextArea, TextAtlas,
+    TextBounds, TextRenderer, Viewport,
 };
 use wgpu::{MultisampleState, TextureFormat};
 
@@ -21,8 +21,10 @@ pub struct TextCollection {
     pub texts: Vec<TextLabel>,
     pub font_system: FontSystem,
     pub text_renderer: TextRenderer,
-    pub cache: SwashCache,
+    pub swashcache: SwashCache,
+    pub cache: Cache,
     pub atlas: TextAtlas,
+    pub viewport: Viewport,
 }
 
 impl TextCollection {
@@ -35,17 +37,21 @@ impl TextCollection {
         let queue = queue.lock().unwrap();
 
         let font_system = FontSystem::new();
-        let cache = SwashCache::new();
-        let mut atlas = TextAtlas::new(&device, &queue, swapchain_format);
+        let swashcache = SwashCache::new();
+        let cache = Cache::new(&device);
+        let mut atlas = TextAtlas::new(&device, &queue, &cache, swapchain_format);
         let text_renderer =
             TextRenderer::new(&mut atlas, &device, MultisampleState::default(), None);
+        let viewport = Viewport::new(&device, &cache);
 
         TextCollection {
             texts: vec![],
             font_system,
             text_renderer,
+            swashcache,
             cache,
             atlas,
+            viewport,
         }
     }
 
@@ -74,14 +80,18 @@ impl TextCollection {
         );
         let physical_width = (rect.2 * display_scale_factor) as f32;
         let physical_height = (rect.3 * display_scale_factor) as f32;
-        buffer.set_size(&mut self.font_system, physical_width, physical_height);
+        buffer.set_size(
+            &mut self.font_system,
+            Some(physical_width),
+            Some(physical_height),
+        );
         buffer.set_text(
             &mut self.font_system,
             text2.as_str(),
             Attrs::new().family(Family::SansSerif),
             Shaping::Advanced,
         );
-        buffer.shape_until_scroll(&mut self.font_system);
+        buffer.shape_until_scroll(&mut self.font_system, false);
 
         self.texts.push(TextLabel {
             buffer,
@@ -101,8 +111,8 @@ impl TextCollection {
         &mut self,
         device: Arc<std::sync::Mutex<wgpu::Device>>,
         queue: Arc<std::sync::Mutex<wgpu::Queue>>,
-        screen_width: u32,
-        screen_height: u32,
+        _screen_width: u32,
+        _screen_height: u32,
     ) -> Result<(), Box<dyn Error>> {
         let device = device.lock().unwrap();
         let queue = queue.lock().unwrap();
@@ -112,10 +122,7 @@ impl TextCollection {
             &queue,
             &mut self.font_system,
             &mut self.atlas,
-            Resolution {
-                width: screen_width,
-                height: screen_height,
-            },
+            &self.viewport,
             self.texts.iter().map(|t| TextArea {
                 buffer: &t.buffer,
                 left: t.left as f32,
@@ -124,7 +131,7 @@ impl TextCollection {
                 bounds: t.bounds,
                 default_color: t.color.to_glyphon_color(),
             }),
-            &mut self.cache,
+            &mut self.swashcache,
         )?;
         Ok(())
     }

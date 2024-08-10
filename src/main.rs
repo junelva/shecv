@@ -10,8 +10,8 @@ mod types;
 mod window;
 
 use crate::types::Value;
-
 use crate::window::{process_events, State};
+
 use std::{cell::RefCell, error::Error, rc::Rc};
 
 fn main() -> Result<(), Box<dyn Error>> {
