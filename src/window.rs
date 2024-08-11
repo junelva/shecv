@@ -20,7 +20,7 @@ use std::{
     fs::metadata,
     rc::Rc,
     sync::{Arc, Mutex},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 use crate::listui::ListInterface;
@@ -77,6 +77,8 @@ pub struct State<'a> {
     pub flow_command: FlowCommand,
     pub context: Option<Context<'a>>,
     pub listuis: Vec<ListInterface<'a>>,
+    pub ui_wait: Duration,
+    pub last_ui_time: Option<SystemTime>,
 }
 
 impl State<'_> {
@@ -98,6 +100,8 @@ impl State<'_> {
                 flow_command: FlowCommand::None,
                 window: Some(window),
                 listuis: vec![],
+                ui_wait: Duration::from_millis(60),
+                last_ui_time: None,
                 ..Default::default()
             },
         ))
@@ -116,58 +120,35 @@ impl State<'_> {
 
         // starting out, we look at the listui and determine where it will go
         let wh = IVec2::new(220, 40);
-        let mut tl = {
+        let tl = {
             match listui.anchor {
                 ListAnchor::Left => IVec2::new(0, 0),
                 ListAnchor::Middle => IVec2::new(config.width as i32 / 2 - wh.x / 2, 0),
                 ListAnchor::Right => IVec2::new(config.width as i32 - wh.x, 0),
+                ListAnchor::Hidden => IVec2::new(0, 0),
             }
         };
         let pad = 4u32;
+        let mut y_offset = 0;
+        let mut final_x = 0;
 
         context.geos.instance_groups[listui.render_group_index]
             .instance_buffer_manager
             .clear();
 
-        // for now, a background rect is created first
-        let _geo_index = context.geos.instance_groups[listui.render_group_index].add_new(
-            context.queue.clone(),
-            ComponentTransform::unit_square_transform_from_pixel_rect(PixelRect {
-                xy: IVec2::new(tl.x, tl.y),
-                wh: UVec2::new(wh.x as u32, config.height),
-                extent: UVec2::new(config.width, config.height),
-            }),
-            0,
-            0,
-            listui.style.bg,
-        );
-
         // for each element in the listui, create a background rect and text label
+        context.texts.clear();
         for (i, item) in listui.entries.iter().enumerate() {
-            let selected = listui.selected_index == i;
-            let _geo_index = context.geos.instance_groups[listui.render_group_index].add_new(
-                context.queue.clone(),
-                ComponentTransform::unit_square_transform_from_pixel_rect(PixelRect {
-                    xy: IVec2::new(tl.x + pad as i32, tl.y + pad as i32),
-                    wh: UVec2::new(wh.x as u32 - pad * 2, wh.y as u32 - pad * 2),
-                    extent: UVec2::new(config.width, config.height),
-                }),
-                0,
-                0,
-                if selected {
-                    listui.style.li_selected_bg
-                } else {
-                    listui.style.li_unselected_bg
-                },
-            );
-            context.texts.new_text(
+            let selected = listui.selected_index == i as i32;
+
+            let mut text_index = context.texts.new_text(
                 (
                     tl.x as f64 + 2.5,
-                    tl.y as f64 + 2.5,
+                    (tl.y + y_offset) as f64 + 2.5,
                     wh.x as f64,
                     wh.y as f64,
                 ),
-                item.label.as_str(),
+                format!("{}: ", item.label).as_str(),
                 1.0,
                 if selected {
                     listui.style.li_selected
@@ -176,12 +157,15 @@ impl State<'_> {
                 },
             );
 
+            // ------------------------ v -_o
+            let label_width = context.texts.texts[text_index].buffer.size().0.unwrap();
+
             let value = &store.vec[item.value.index];
 
-            context.texts.new_text(
+            text_index = context.texts.new_text(
                 (
-                    (tl.x + wh.x / 2) as f64 + 2.5,
-                    tl.y as f64 + 2.5,
+                    (tl.x + label_width as i32) as f64 + 2.5,
+                    (tl.y + y_offset) as f64 + 2.5,
                     wh.x as f64,
                     wh.y as f64,
                 ),
@@ -194,7 +178,49 @@ impl State<'_> {
                 },
             );
 
-            tl.y += wh.y;
+            let value_width = context.texts.texts[text_index].buffer.size().0.unwrap();
+            let elem_width = (label_width + value_width) as u32;
+
+            if elem_width as i32 > final_x {
+                final_x = elem_width as i32;
+            }
+
+            y_offset += wh.y;
+        }
+
+        // a background rect is created - will it work!? the answer: yes...
+        let _geo_index = context.geos.instance_groups[listui.render_group_index].add_new(
+            context.queue.clone(),
+            ComponentTransform::unit_square_transform_from_pixel_rect(PixelRect {
+                xy: IVec2::new(tl.x, tl.y),
+                wh: UVec2::new(final_x as u32, config.height),
+                extent: UVec2::new(config.width, config.height),
+            }),
+            0,
+            0,
+            listui.style.bg,
+        );
+
+        // but now we need to loop again and place the foreground rects
+        y_offset = 0;
+        for (i, _item) in listui.entries.iter().enumerate() {
+            let selected = listui.selected_index == i as i32;
+            let _geo_index = context.geos.instance_groups[listui.render_group_index].add_new(
+                context.queue.clone(),
+                ComponentTransform::unit_square_transform_from_pixel_rect(PixelRect {
+                    xy: IVec2::new(tl.x + pad as i32, tl.y + y_offset + pad as i32),
+                    wh: UVec2::new(final_x as u32 - pad * 2, wh.y as u32 - pad * 2),
+                    extent: UVec2::new(config.width, config.height),
+                }),
+                0,
+                0,
+                if selected {
+                    listui.style.li_selected_bg
+                } else {
+                    listui.style.li_unselected_bg
+                },
+            );
+            y_offset += wh.y;
         }
 
         Ok(())
@@ -228,11 +254,10 @@ impl State<'_> {
         let size = window.size();
 
         // instance, adapter, device, queue
-        // let instance = Instance::new(InstanceDescriptor::default());
         let instance = Instance::new(InstanceDescriptor {
-            // backends: wgpu::Backends::VULKAN,
             ..Default::default()
         });
+
         let adapter = instance
             .request_adapter(&RequestAdapterOptions::default())
             .await
@@ -328,11 +353,15 @@ impl Context<'_> {
         config.height = size.1;
         let surface = surface.lock().unwrap();
         surface.configure(&device, &config);
-        self.geos
-            .update_view(self.queue.clone(), config.width, config.height);
-        for group in self.geos.instance_groups.iter_mut() {
-            group.mark_all_for_update();
-        }
+
+        // below functions were to resize on-screen geometry instances...
+        // this is not necessary atm bc we recreate geo instances every frame
+
+        // self.geos
+        //     .update_view(self.queue.clone(), config.width, config.height);
+        // for group in self.geos.instance_groups.iter_mut() {
+        //     group.mark_all_for_update();
+        // }
     }
 
     pub fn render(&mut self) -> Result<(), Box<dyn Error>> {
@@ -421,6 +450,15 @@ pub fn process_events(
                         context.resize(context.surface.clone(), (w as u32, h as u32));
                         let sdl = sdl.borrow_mut();
                         sdl.event().unwrap().flush_events(0, 0xFFFF);
+                        let mut listuis_to_update = vec![];
+                        for (index, listui) in state.listuis.iter().enumerate() {
+                            if listui.anchor != ListAnchor::Hidden {
+                                listuis_to_update.push(index);
+                            }
+                        }
+                        for index in listuis_to_update {
+                            let _ = state.layout_listui(&store.borrow_mut(), index);
+                        }
                     }
                     WindowEvent::Enter => {}
                     _ => {}
@@ -443,11 +481,54 @@ pub fn process_events(
                 Event::KeyDown {
                     keycode: Some(Keycode::Up),
                     ..
-                } => {}
+                } => {
+                    let mut state = state.borrow_mut();
+                    let input_ok = {
+                        let mut input_ok = true;
+                        if state.last_ui_time.is_some()
+                            && state.last_ui_time.unwrap() + state.ui_wait > SystemTime::now()
+                        {
+                            input_ok = false;
+                        }
+                        input_ok
+                    };
+                    if input_ok {
+                        for listui in &mut state.listuis {
+                            if listui.selected_index == 0 {
+                                listui.selected_index = (listui.entries.len() - 1) as i32;
+                            } else if listui.selected_index >= 0 {
+                                listui.selected_index -= 1;
+                            }
+                        }
+                        state.last_ui_time = Some(SystemTime::now());
+                    }
+                }
                 Event::KeyDown {
                     keycode: Some(Keycode::Down),
                     ..
-                } => {}
+                } => {
+                    let mut state = state.borrow_mut();
+                    let input_ok = {
+                        let mut input_ok = true;
+                        if state.last_ui_time.is_some()
+                            && state.last_ui_time.unwrap() + state.ui_wait > SystemTime::now()
+                        {
+                            input_ok = false;
+                        }
+                        input_ok
+                    };
+                    if input_ok {
+                        for listui in &mut state.listuis {
+                            if listui.selected_index == (listui.entries.len() - 1) as i32 {
+                                listui.selected_index = 0;
+                            } else if listui.selected_index >= 0 {
+                                listui.selected_index =
+                                    (listui.selected_index + 1) % listui.entries.len() as i32;
+                            }
+                        }
+                        state.last_ui_time = Some(SystemTime::now());
+                    }
+                }
                 _ => {}
             }
         }

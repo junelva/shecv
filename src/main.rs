@@ -54,12 +54,9 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
                 window::FlowCommand::Quit => break,
                 window::FlowCommand::None => {}
             }
-
-            let context = state.context.as_mut().unwrap();
-            context.texts.clear();
             state.layout_listui(&store.borrow_mut(), listui_index)?;
 
-            sleep(Duration::from_millis(10));
+            sleep(Duration::from_millis(30));
         }
     }
 

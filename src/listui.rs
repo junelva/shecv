@@ -62,7 +62,7 @@ pub struct ListInterface<'a> {
     pub focused: bool,
     pub popout: ListPopoutState,
     pub resume: ListResumeBehavior,
-    pub selected_index: usize,
+    pub selected_index: i32,
     pub entries: Vec<ListItem<'a>>,
     pub render_group_index: usize,
 }
@@ -120,12 +120,13 @@ impl<'a> ListInterface<'a> {
 // ListInterface can be anchored to left, middle, or right of screen.
 // When on a SubList, this determines the opening direction.
 // Opening a SubList to Middle causes it to replace the parent.
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq)]
 pub enum ListAnchor {
     #[default]
     Left,
     Middle,
     Right,
+    Hidden,
 }
 
 // When a ListInterface is re-entered, this determines where the cursor starts.

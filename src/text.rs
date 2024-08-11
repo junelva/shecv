@@ -65,7 +65,7 @@ impl TextCollection {
         text: &str,
         text_scale_factor: f64,
         color: ColorRGBA,
-    ) {
+    ) -> usize {
         let text2 = if text.parse::<f64>().is_ok() {
             let floatval = text.parse::<f64>().unwrap();
             format!("{:.2}", floatval)
@@ -101,6 +101,8 @@ impl TextCollection {
             bounds: TextBounds::default(),
             color,
         });
+
+        self.texts.len() - 1
     }
 
     pub fn trim_atlas(&mut self) {
