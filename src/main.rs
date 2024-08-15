@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use log::info;
 use std::{cell::RefCell, error::Error, rc::Rc};
 
 mod geo;
@@ -40,13 +41,20 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
 
     {
         use std::thread::sleep;
-        use std::time::Duration;
+        use std::time::{Duration, Instant};
 
         let sdl = Rc::new(RefCell::new(sdl));
         let state = Rc::new(RefCell::new(state));
         let store = Rc::new(RefCell::new(store));
 
+        // nanos per frame at 60 fps: 16_666_667
+        // nanos per frame at 30 fps: 33_333_333
+        // nanos per frame at 15 fps: 66_666_667
+        let desired_frametime = Duration::new(0, 66_666_667);
+
         loop {
+            let loop_start = Instant::now();
+
             process_events(Rc::clone(&state), Rc::clone(&sdl), Rc::clone(&store))();
 
             let mut state = state.borrow_mut();
@@ -56,7 +64,11 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
             }
             state.layout_listui(&store.borrow_mut(), listui_index)?;
 
-            sleep(Duration::from_millis(30));
+            let elapsed = loop_start.elapsed();
+            info!("ft: {:?}", elapsed);
+            if elapsed < desired_frametime {
+                sleep(desired_frametime - elapsed);
+            }
         }
     }
 
