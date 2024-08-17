@@ -22,9 +22,9 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
     let mut store = ValueStore::new();
-    let mut key1 = store.insert("world".to_string());
-    let mut key2 = store.insert("interface?".to_string());
-    let mut key3 = store.insert(0.0_f64);
+    let key1 = store.insert("key1", "world".to_string());
+    let key2 = store.insert("key2", "interface?".to_string());
+    let key3 = store.insert("key3", 0.0_f64);
 
     let (sdl, mut state) = State::new(width, height, "testing")?;
 
@@ -32,9 +32,10 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
         state.new_context().await?;
         let listui_index = state.new_listui()?;
         let listui = &mut state.listuis[listui_index];
-        listui.add_labeled_value("hello", &mut key1);
-        listui.add_labeled_value("list", &mut key2);
-        listui.add_labeled_value("time", &mut key3);
+        listui.add_labeled_value("hell", Rc::clone(&key1));
+        listui.add_labeled_value("list", Rc::clone(&key2));
+        listui.add_labeled_value("time", Rc::clone(&key3));
+        listui.add_labeled_value("time", Rc::clone(&key3));
         state.layout_listui(&store, listui_index)?;
         listui_index
     };

@@ -1,0 +1,12 @@
+>>> coffee :)
+
+couple things that need doing.
+[DONE] - ui values wrapped in rc<refcell>
+- in-engine display of perf metrics
+	- sidequest: multiple menu displays
+	- metrics measurements trackers
+	- some ways of visualizing that
+- pretty up the rendering (eternal...)
+
+- i don't like how values are tracked
+[DONE] - hashmap instead of vec

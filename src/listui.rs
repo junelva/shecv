@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::types::{ColorRGBA, ListItemData, Value};
 
 pub struct ListStyle {
@@ -56,14 +58,14 @@ impl Default for ListPopoutState {
 }
 
 // A ListInterface provides navigation of a vertical list of items.
-pub struct ListInterface<'a> {
+pub struct ListInterface {
     pub style: ListStyle,
     pub anchor: ListAnchor,
     pub focused: bool,
     pub popout: ListPopoutState,
     pub resume: ListResumeBehavior,
     pub selected_index: i32,
-    pub entries: Vec<ListItem<'a>>,
+    pub entries: Vec<ListItem>,
     pub render_group_index: usize,
 }
 
@@ -71,7 +73,7 @@ pub struct ListInterface<'a> {
 // Complications include styling and animation.
 // To facilitate this, it holds a state machine
 // and renders in immediate mode.
-impl<'a> ListInterface<'a> {
+impl ListInterface {
     pub fn default(render_group_index: usize) -> Self {
         Self {
             style: ListStyle::default(),
@@ -85,11 +87,7 @@ impl<'a> ListInterface<'a> {
         }
     }
 
-    pub fn add_labeled_value<'b: 'a>(
-        &mut self,
-        label: &str,
-        value: &'a mut Value<dyn ListItemData>,
-    ) {
+    pub fn add_labeled_value(&mut self, label: &str, value: Rc<RefCell<Value<dyn ListItemData>>>) {
         self.entries.push(ListItem {
             label: label.to_string(),
             ty: ListItemType::Text,
@@ -99,13 +97,13 @@ impl<'a> ListInterface<'a> {
         })
     }
 
-    pub fn add_entry<'b: 'a>(
+    pub fn add_entry(
         &mut self,
         label: &str,
         ty: ListItemType,
         selectable: ListItemSelectable,
         editable: ListItemEditable,
-        value: &'a mut Value<dyn ListItemData>,
+        value: Rc<RefCell<Value<dyn ListItemData>>>,
     ) {
         self.entries.push(ListItem {
             label: label.to_string(),
@@ -181,10 +179,10 @@ pub enum OperatorResult {
 }
 
 // ListItems have these options. They also contain data references.
-pub struct ListItem<'a> {
+pub struct ListItem {
     pub label: String,
     pub ty: ListItemType,
     pub selectable: ListItemSelectable,
     pub editable: ListItemEditable,
-    pub value: &'a mut Value<dyn ListItemData>,
+    pub value: Rc<RefCell<Value<dyn ListItemData>>>,
 }

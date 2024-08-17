@@ -76,7 +76,7 @@ pub struct State<'a> {
     pub window: Option<Window>,
     pub flow_command: FlowCommand,
     pub context: Option<Context<'a>>,
-    pub listuis: Vec<ListInterface<'a>>,
+    pub listuis: Vec<ListInterface>,
     pub ui_wait: Duration,
     pub last_ui_time: Option<SystemTime>,
 }
@@ -160,7 +160,8 @@ impl State<'_> {
             // ------------------------ v -_o
             let label_width = context.texts.texts[text_index].buffer.size().0.unwrap();
 
-            let value = &store.vec[item.value.index];
+            let value_ref = item.value.borrow();
+            let value = value_ref.load(store);
 
             text_index = context.texts.new_text(
                 (
@@ -533,22 +534,16 @@ pub fn process_events(
             }
         }
 
+        {
+            let mut store = store.borrow_mut();
+            let mut value_ref = store.get("key1");
+            value_ref.replace(Box::new("banana".to_string()), &mut store);
+            let mut k3 = store.get("key3");
+            let val = k3.load(&store).as_any().downcast_ref().unwrap();
+            k3.replace(Box::new(val + 0.01), &mut store);
+        }
+
         let mut state = state.borrow_mut();
-        let mut store = store.borrow_mut();
-        state.listuis[0].entries[0]
-            .value
-            .replace(Box::new("banana".to_string()), &mut store);
-
-        let k3 = state.listuis[0].entries[2]
-            .value
-            .load(&mut store)
-            .as_any()
-            .downcast_ref()
-            .unwrap();
-        state.listuis[0].entries[2]
-            .value
-            .replace(Box::new(k3 + 0.01), &mut store);
-
         let context = state.context.as_mut().unwrap();
         {
             let config = context.config.lock().unwrap();

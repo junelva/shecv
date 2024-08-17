@@ -1,9 +1,12 @@
 use glam::{IVec2, Quat, UVec2};
 use std::{
     any::Any,
+    cell::RefCell,
+    collections::HashMap,
     marker::PhantomData,
     mem::size_of,
-    ops::DerefMut,
+    ops::Deref,
+    rc::Rc,
     sync::{Arc, Mutex},
 };
 
@@ -21,26 +24,34 @@ use wgpu::{
 use crate::listui::{ListInterface, OperatorResult};
 
 pub struct ValueStore {
-    pub vec: Vec<Box<dyn ListItemData>>,
+    pub map: HashMap<String, Box<dyn ListItemData>>,
 }
 
 impl ValueStore {
     pub fn new() -> Self {
-        Self { vec: vec![] }
+        Self {
+            map: HashMap::new(),
+        }
     }
 
-    pub fn insert<T: 'static + ListItemData>(&mut self, v: T) -> Value<dyn ListItemData> {
-        Value::<dyn ListItemData>::new(Box::new(v), self)
+    pub fn get(&self, key: &str) -> Value<dyn ListItemData> {
+        Value {
+            p: PhantomData,
+            key: key.to_string(),
+        }
     }
-}
 
-#[derive(Copy, Clone, Debug)]
-pub struct Value<T>
-where
-    T: ListItemData + ?Sized,
-{
-    p: PhantomData<T>,
-    pub index: usize,
+    pub fn insert<T: 'static + ListItemData>(
+        &mut self,
+        key: &str,
+        v: T,
+    ) -> Rc<RefCell<Value<dyn ListItemData>>> {
+        Rc::new(RefCell::new(Value::<dyn ListItemData>::new(
+            key,
+            Box::new(v),
+            self,
+        )))
+    }
 }
 
 pub trait ToAny: 'static {
@@ -65,7 +76,7 @@ impl std::fmt::Display for OpFnMut {
     }
 }
 
-impl std::fmt::Display for ListInterface<'_> {
+impl std::fmt::Display for ListInterface {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "<ListInterface>")
     }
@@ -82,29 +93,40 @@ impl ListItemData for String {}
 // impl ListItemData for OpFnMut {}
 // impl ListItemData for ListInterface<'_> {}
 
+#[derive(Debug)]
+pub struct Value<T>
+where
+    T: ListItemData + ?Sized,
+{
+    p: PhantomData<T>,
+    pub key: String,
+}
+
 impl<T: ?Sized + 'static> Value<T>
 where
     T: 'static + ListItemData,
 {
-    pub fn load<'a>(&self, store: &'a mut ValueStore) -> &'a dyn ListItemData {
-        store.vec[self.index].deref_mut()
+    pub fn load<'a>(&self, store: &'a ValueStore) -> &'a dyn ListItemData {
+        store.map.get(&self.key).unwrap().deref()
     }
 
     pub fn new(
+        key: &str,
         boxed_value: Box<dyn ListItemData>,
         store: &mut ValueStore,
     ) -> Value<dyn ListItemData> {
-        let index = store.vec.len();
-        store.vec.push(boxed_value);
+        store.map.insert(key.to_string(), boxed_value);
 
         Value {
             p: PhantomData,
-            index,
+            key: key.to_string(),
         }
     }
 
     pub fn replace(&mut self, boxed_value: Box<dyn ListItemData>, store: &mut ValueStore) {
-        store.vec[self.index] = boxed_value;
+        store.map.remove(&self.key);
+        store.map.insert(self.key.as_str().to_string(), boxed_value);
+        self.p = PhantomData;
     }
 }
 
