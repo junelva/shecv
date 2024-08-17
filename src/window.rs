@@ -534,15 +534,6 @@ pub fn process_events(
             }
         }
 
-        {
-            let mut store = store.borrow_mut();
-            let mut value_ref = store.get("key1");
-            value_ref.replace(Box::new("banana".to_string()), &mut store);
-            let mut k3 = store.get("key3");
-            let val = k3.load(&store).as_any().downcast_ref().unwrap();
-            k3.replace(Box::new(val + 0.01), &mut store);
-        }
-
         let mut state = state.borrow_mut();
         let context = state.context.as_mut().unwrap();
         {

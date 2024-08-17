@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use log::info;
+use std::ops::DerefMut;
+use std::time::{Duration, Instant};
 use std::{cell::RefCell, error::Error, rc::Rc};
-
 mod geo;
 mod listui;
 mod text;
@@ -21,10 +22,9 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
     let (width, height) = (640, 480);
     env_logger::init();
 
+    let app_start_time = Instant::now();
     let mut store = ValueStore::new();
-    let key1 = store.insert("key1", "world".to_string());
-    let key2 = store.insert("key2", "interface?".to_string());
-    let key3 = store.insert("key3", 0.0_f64);
+    let time = store.insert("time", 0.0_f64);
 
     let (sdl, mut state) = State::new(width, height, "testing")?;
 
@@ -32,17 +32,13 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
         state.new_context().await?;
         let listui_index = state.new_listui()?;
         let listui = &mut state.listuis[listui_index];
-        listui.add_labeled_value("hell", Rc::clone(&key1));
-        listui.add_labeled_value("list", Rc::clone(&key2));
-        listui.add_labeled_value("time", Rc::clone(&key3));
-        listui.add_labeled_value("time", Rc::clone(&key3));
+        listui.add_labeled_value("time", Rc::clone(&time));
         state.layout_listui(&store, listui_index)?;
         listui_index
     };
 
     {
         use std::thread::sleep;
-        use std::time::{Duration, Instant};
 
         let sdl = Rc::new(RefCell::new(sdl));
         let state = Rc::new(RefCell::new(state));
@@ -70,6 +66,11 @@ async fn init_loop() -> Result<(), Box<dyn Error>> {
             if elapsed < desired_frametime {
                 sleep(desired_frametime - elapsed);
             }
+
+            let running_time = Box::new(app_start_time.elapsed().as_secs_f64());
+            let mut store_borrow = store.borrow_mut();
+            let store = store_borrow.deref_mut();
+            store.get("time").replace(running_time, store);
         }
     }
 

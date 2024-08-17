@@ -1,9 +1,16 @@
->>> coffee :)
+>>> mango :)
 
 couple things that need doing.
 [DONE] - ui values wrapped in rc<refcell>
+- wrap store get/put interactions
+	- should state own the store? (yes)
+> - actually meaningful menu options
+	- > have anything move around
+		- > entity system... which?
+		- > xforms in value store?
+		- idea: play with boids
+- layout: multiple menu displays
 - in-engine display of perf metrics
-	- sidequest: multiple menu displays
 	- metrics measurements trackers
 	- some ways of visualizing that
 - pretty up the rendering (eternal...)
