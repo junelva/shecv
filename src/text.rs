@@ -22,6 +22,7 @@ pub struct TextCollection {
     pub font_system: FontSystem,
     pub text_renderer: TextRenderer,
     pub swashcache: SwashCache,
+    #[allow(dead_code)]
     pub cache: Cache,
     pub atlas: TextAtlas,
     pub viewport: Viewport,

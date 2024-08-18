@@ -23,10 +23,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use crate::listui::ListInterface;
 use crate::{
-    geo::GeoManager,
-    listui::ListAnchor,
+    geo::{GeoManager, GeoViewType},
+    listui::{ListAnchor, ListInterface},
     types::{TextureSheetDefinition, ValueStore},
 };
 use crate::{
@@ -72,6 +71,7 @@ pub enum FlowCommand {
 
 #[derive(Default)]
 pub struct State<'a> {
+    #[allow(dead_code)]
     pub title: Option<String>,
     pub window: Option<Window>,
     pub flow_command: FlowCommand,
@@ -86,7 +86,7 @@ impl State<'_> {
         let sdl = sdl2::init().unwrap();
         let video = sdl.video().unwrap();
         let window = video
-            .window("SDL2/wgpu", width, height)
+            .window(title, width, height)
             .position_centered()
             .resizable()
             .opengl()
@@ -119,7 +119,7 @@ impl State<'_> {
         let config = context.config.lock().unwrap();
 
         // starting out, we look at the listui and determine where it will go
-        let wh = IVec2::new(220, 40);
+        let wh = IVec2::new(60, 20);
         let tl = {
             match listui.anchor {
                 ListAnchor::Left => IVec2::new(0, 0),
@@ -235,10 +235,10 @@ impl State<'_> {
             context.file_watcher.add_path(shader_path);
             let config = context.config.lock().unwrap();
             context.geos.new_unit_square(
+                GeoViewType::Orthographic,
                 512,
                 config.format,
-                config.width,
-                config.height,
+                (config.width, config.height),
                 TextureSheetDefinition::default(),
                 shader_path,
             )?
@@ -314,6 +314,7 @@ pub struct Context<'a> {
     pub queue: Arc<Mutex<Queue>>,
     pub surface: Arc<Mutex<Surface<'a>>>,
     pub config: Arc<Mutex<SurfaceConfiguration>>,
+    #[allow(dead_code)]
     pub swapchain_format: TextureFormat,
     pub texts: TextCollection,
     pub geos: GeoManager,
@@ -337,13 +338,13 @@ impl Context<'_> {
 
     pub fn update(&mut self) -> Result<(), Box<dyn Error>> {
         self.check_watched_files()?;
-        let config = self.config.lock().unwrap();
-        for group in self.geos.instance_groups.iter_mut() {
-            group.instance_buffer_manager.recalc_screen_instances(
-                self.queue.clone(),
-                UVec2::new(config.width, config.height),
-            );
-        }
+        // let config = self.config.lock().unwrap();
+        // for group in self.geos.instance_groups.iter_mut() {
+        //     group.instance_buffer_manager.recalc_screen_instances(
+        //         self.queue.clone(),
+        //         UVec2::new(config.width, config.height),
+        //     );
+        // }
         Ok(())
     }
 
@@ -358,8 +359,8 @@ impl Context<'_> {
         // below functions were to resize on-screen geometry instances...
         // this is not necessary atm bc we recreate geo instances every frame
 
-        // self.geos
-        //     .update_view(self.queue.clone(), config.width, config.height);
+        self.geos
+            .update_view(self.queue.clone(), config.width, config.height);
         for group in self.geos.instance_groups.iter_mut() {
             group.mark_all_for_update();
         }

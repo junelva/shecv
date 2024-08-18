@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::types::{ColorRGBA, ListItemData, Value};
 
+#[allow(dead_code)]
 pub struct ListStyle {
     pub bg: ColorRGBA,
 
@@ -35,12 +36,14 @@ impl ListStyle {
 }
 
 #[derive(Default)]
+#[allow(dead_code)]
 pub enum ListPopoutBehavior {
     #[default]
     AlwaysVisible,
     HiddenWhenUnfocused,
 }
 
+#[allow(dead_code)]
 pub struct ListPopoutState {
     behavior: ListPopoutBehavior,
     speed: f32,
@@ -58,6 +61,7 @@ impl Default for ListPopoutState {
 }
 
 // A ListInterface provides navigation of a vertical list of items.
+#[allow(dead_code)]
 pub struct ListInterface {
     pub style: ListStyle,
     pub anchor: ListAnchor,
@@ -119,6 +123,7 @@ impl ListInterface {
 // When on a SubList, this determines the opening direction.
 // Opening a SubList to Middle causes it to replace the parent.
 #[derive(Default, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ListAnchor {
     #[default]
     Left,
@@ -129,6 +134,7 @@ pub enum ListAnchor {
 
 // When a ListInterface is re-entered, this determines where the cursor starts.
 #[derive(Default)]
+#[allow(dead_code)]
 pub enum ListResumeBehavior {
     #[default]
     First,
@@ -148,6 +154,7 @@ pub enum ListResumeBehavior {
 // SubList causes a submenu to open left or right.
 //  - Requires a ListInterface reference; anchor is open direction.
 #[derive(Default)]
+#[allow(dead_code)]
 pub enum ListItemType {
     #[default]
     Text,
@@ -159,6 +166,7 @@ pub enum ListItemType {
 }
 
 #[derive(Default)]
+#[allow(dead_code)]
 pub enum ListItemSelectable {
     #[default]
     Selectable,
@@ -172,6 +180,7 @@ pub enum ListItemEditable {
     NotEditable,
 }
 
+#[allow(dead_code)]
 pub enum OperatorResult {
     Done,
     Cancelled,
@@ -179,6 +188,7 @@ pub enum OperatorResult {
 }
 
 // ListItems have these options. They also contain data references.
+#[allow(dead_code)]
 pub struct ListItem {
     pub label: String,
     pub ty: ListItemType,

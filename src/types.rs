@@ -54,6 +54,7 @@ impl ValueStore {
     }
 }
 
+#[allow(dead_code)]
 pub trait ToAny: 'static {
     fn as_any(&self) -> &dyn Any;
 }
@@ -66,6 +67,7 @@ impl<T: 'static> ToAny for T {
 
 pub trait ListItemData: 'static + ToAny + std::fmt::Display {}
 
+#[allow(dead_code)]
 pub struct OpFnMut {
     callback: dyn FnMut(OperatorResult),
 }
@@ -483,6 +485,7 @@ impl InstanceBufferManager {
 }
 
 pub struct TextureSheetClusterDefinition {
+    #[allow(dead_code)]
     pub label: String,
     pub offset: UVec2,
     pub cluster_size: UVec2,
@@ -525,6 +528,7 @@ impl Default for TextureSheetDefinition {
 pub struct TextureSheet {
     pub sheet_info: TextureSheetDefinition,
     pub dimensions: UVec2,
+    #[allow(dead_code)]
     pub texture: Texture,
     pub sampler: Sampler,
     pub view: TextureView,

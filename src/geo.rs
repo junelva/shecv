@@ -27,6 +27,11 @@ use wgpu::{
     VertexState,
 };
 
+pub enum GeoViewType {
+    Orthographic,
+    Perspective,
+}
+
 // various things needed to render geometry.
 pub struct GeoInstances {
     pub render_pipeline_record: RenderPipelineRecord,
@@ -34,6 +39,7 @@ pub struct GeoInstances {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub sheet: TextureSheet,
+    pub view_type: GeoViewType,
     pub view_matrix_uniform: GeoUniformMatrix,
     pub screen_size_uniform: GeoUniformVec2,
     pub instance_buffer_manager: InstanceBufferManager,
@@ -150,7 +156,10 @@ fn load_texture(
 pub struct GeoManager {
     pub device: Arc<Mutex<Device>>,
     pub queue: Arc<Mutex<Queue>>,
+    #[allow(dead_code)]
     pub format: TextureFormat,
+    pub view_ortho: Mat4,
+    pub view_persp: Mat4,
     pub instance_groups: Vec<GeoInstances>,
 }
 
@@ -164,6 +173,8 @@ impl GeoManager {
             device,
             queue,
             format,
+            view_ortho: Mat4::orthographic_lh(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0),
+            view_persp: Mat4::perspective_lh(2.0, 4.0 / 3.0, -1.0, 1000.0),
             instance_groups: vec![],
         }
     }
@@ -177,14 +188,18 @@ impl GeoManager {
 
     pub fn update_view(&mut self, queue: Arc<Mutex<Queue>>, width: u32, height: u32) {
         let queue = queue.lock().unwrap();
-        let view_matrix = Mat4::orthographic_lh(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+        // let _view_matrix = Mat4::orthographic_lh(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+        self.view_persp = Mat4::perspective_rh(2.0, width as f32 / height as f32, 0.0, 100.0);
         let screen_size = Vec2::new(width as f32, height as f32);
         for ig in self.instance_groups.iter_mut() {
-            ig.view_matrix_uniform.matrix = view_matrix;
+            ig.view_matrix_uniform.matrix = match ig.view_type {
+                GeoViewType::Orthographic => self.view_ortho,
+                GeoViewType::Perspective => self.view_persp,
+            };
             queue.write_buffer(
                 &ig.view_matrix_uniform.buffer,
                 0,
-                bytemuck::cast_slice(&[view_matrix]),
+                bytemuck::cast_slice(&[ig.view_matrix_uniform.matrix]),
             );
             ig.screen_size_uniform.vec = screen_size;
             queue.write_buffer(
@@ -250,13 +265,15 @@ impl GeoManager {
 
     pub fn new_unit_square(
         &mut self,
+        view_type: GeoViewType,
         max_instances: usize,
         format: TextureFormat,
-        width: u32,
-        height: u32,
+        wh: (u32, u32),
         sheet_info: TextureSheetDefinition,
         shader_path: &str,
     ) -> Result<usize, Box<dyn Error>> {
+        let width = wh.0;
+        let height = wh.1;
         // prepare texture sheet data
         let sheet = load_texture(self.device.clone(), self.queue.clone(), sheet_info)?;
 
@@ -281,14 +298,33 @@ impl GeoManager {
         });
 
         // view matrix uniform setup
-        let view_matrix = Mat4::orthographic_lh(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
-        let view_matrix_uniform = GeoUniformMatrix {
-            matrix: view_matrix,
-            buffer: device.create_buffer_init(&BufferInitDescriptor {
-                label: Some("unit square view_matrix"),
-                contents: bytemuck::cast_slice(&[view_matrix]),
-                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            }),
+        let (_view_matrix, view_matrix_uniform) = {
+            match view_type {
+                GeoViewType::Orthographic => {
+                    let view_matrix = Mat4::orthographic_lh(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+                    let view_matrix_uniform = GeoUniformMatrix {
+                        matrix: view_matrix,
+                        buffer: device.create_buffer_init(&BufferInitDescriptor {
+                            label: Some("unit square view_matrix"),
+                            contents: bytemuck::cast_slice(&[view_matrix]),
+                            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                        }),
+                    };
+                    (view_matrix, view_matrix_uniform)
+                }
+                GeoViewType::Perspective => {
+                    let view_matrix = Mat4::perspective_rh(2.0, 4.0 / 3.0, 0.01, 100.0);
+                    let view_matrix_uniform = GeoUniformMatrix {
+                        matrix: view_matrix,
+                        buffer: device.create_buffer_init(&BufferInitDescriptor {
+                            label: Some("unit square view_matrix"),
+                            contents: bytemuck::cast_slice(&[view_matrix]),
+                            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                        }),
+                    };
+                    (view_matrix, view_matrix_uniform)
+                }
+            }
         };
 
         // screen size uniform setup
@@ -421,6 +457,7 @@ impl GeoManager {
             vertex_buffer,
             index_buffer,
             sheet,
+            view_type,
             view_matrix_uniform,
             screen_size_uniform,
             instance_buffer_manager: InstanceBufferManager::new(max_instances, self.device.clone()),
