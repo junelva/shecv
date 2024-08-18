@@ -235,6 +235,15 @@ impl ColorRGBA {
             a: 1.0,
         }
     }
+
+    pub fn magenta() -> Self {
+        Self {
+            r: 1.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        }
+    }
 }
 
 #[repr(C)]

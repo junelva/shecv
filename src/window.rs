@@ -360,9 +360,9 @@ impl Context<'_> {
 
         // self.geos
         //     .update_view(self.queue.clone(), config.width, config.height);
-        // for group in self.geos.instance_groups.iter_mut() {
-        //     group.mark_all_for_update();
-        // }
+        for group in self.geos.instance_groups.iter_mut() {
+            group.mark_all_for_update();
+        }
     }
 
     pub fn render(&mut self) -> Result<(), Box<dyn Error>> {
@@ -536,6 +536,7 @@ pub fn process_events(
 
         let mut state = state.borrow_mut();
         let context = state.context.as_mut().unwrap();
+        let _ = context.update();
         {
             let config = context.config.lock().unwrap();
             context.texts.viewport.update(

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 wgpu = "22"
+hecs = "0.10.5"
 glyphon = { git = "https://github.com/grovesNL/glyphon.git" }
 pollster = "0.3.0"
 glam = { version = "0.28.0", features = ["bytemuck"] }

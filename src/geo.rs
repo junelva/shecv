@@ -64,10 +64,10 @@ impl GeoInstances {
         }
     }
 
-    pub fn recalc_screen_instances(&mut self, queue: Arc<Mutex<Queue>>, screen: UVec2) {
-        self.instance_buffer_manager
-            .recalc_screen_instances(queue, screen);
-    }
+    // pub fn recalc_screen_instances(&mut self, queue: Arc<Mutex<Queue>>, screen: UVec2) {
+    //     self.instance_buffer_manager
+    //         .recalc_screen_instances(queue, screen);
+    // }
 }
 
 fn load_texture(
